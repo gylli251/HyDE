@@ -69,15 +69,36 @@ while read -r pkg deps; do
 
     if pkg_installed "${pkg}"; then
         print_log -y "[skip] " "${pkg}"
-    elif pkg_available "${pkg}"; then
-        repo=$(pacman -Si "${pkg}" | awk -F ': ' '/Repository / {print $2}')
-        print_log -b "[queue] " -g "${repo}" -b "::" "${pkg}"
-        archPkg+=("${pkg}")
-    elif aur_available "${pkg}"; then
-        print_log -b "[queue] " -g "aur" -b "::" "${pkg}"
-        aurhPkg+=("${pkg}")
     else
-        print_log -r "[error] " "unknown package ${pkg}..."
+        case $pkg_manager in
+            "pacman")
+                if pkg_available "${pkg}"; then
+                    repo=$(pacman -Si "${pkg}" | awk -F ': ' '/Repository / {print $2}')
+                    print_log -b "[queue] " -g "${repo}" -b "::" "${pkg}"
+                    archPkg+=("${pkg}")
+                elif aur_available "${pkg}"; then
+                    print_log -b "[queue] " -g "aur" -b "::" "${pkg}"
+                    aurhPkg+=("${pkg}")
+                else
+                    print_log -r "[error] " "unknown package ${pkg}..."
+                fi
+                ;;
+            "dnf")
+                if pkg_available "${pkg}"; then
+                    print_log -b "[queue] " -g "dnf" -b "::" "${pkg}"
+                    archPkg+=("${pkg}")
+                else
+                    # Try to find a similar package name
+                    similar_pkg=$(dnf search "${pkg}" 2>/dev/null | grep -i "${pkg}" | head -n1 | awk '{print $1}')
+                    if [ -n "${similar_pkg}" ]; then
+                        print_log -y "[note] " "using ${similar_pkg} instead of ${pkg}"
+                        archPkg+=("${similar_pkg}")
+                    else
+                        print_log -r "[error] " "unknown package ${pkg}..."
+                    fi
+                fi
+                ;;
+        esac
     fi
 done < <(cut -d '#' -f 1 "${listPkg}")
 

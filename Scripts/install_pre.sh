@@ -72,8 +72,24 @@ if pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | a
     fi
 fi
 
-# Package manager configuration
+# Install essential packages first
 pkg_manager=$(detect_package_manager)
+case $pkg_manager in
+    "pacman")
+        print_log -g "[SYSTEM] " -b "install :: " "essential packages..."
+        [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Sy --needed --noconfirm base-devel lspci fontconfig
+        ;;
+    "dnf")
+        print_log -g "[SYSTEM] " -b "install :: " "essential packages..."
+        [ "${flg_DryRun}" -eq 1 ] || sudo dnf install -y pciutils fontconfig dnf-plugins-core
+        ;;
+    *)
+        print_log -r "[error] " "unsupported package manager"
+        exit 1
+        ;;
+esac
+
+# Package manager configuration
 case $pkg_manager in
     "pacman")
         if [ -f /etc/pacman.conf ] && [ ! -f /etc/pacman.conf.hyde.bkp ]; then
@@ -147,6 +163,26 @@ EOL
         else
             print_log -sec "RPM Fusion" -stat "skipped" "repositories already enabled..."
         fi
+
+        # Enable COPR repositories for HyDE-specific packages
+        print_log -g "[DNF] " -b "setup :: " "enabling COPR repositories..."
+        [ "${flg_DryRun}" -eq 1 ] || {
+            # Hyprland and related tools
+            sudo dnf copr enable -y solopasha/hyprland
+            # Starship prompt
+            sudo dnf copr enable -y atim/starship
+            # nwg-look
+            sudo dnf copr enable -y trs80/nwg-look
+            # Powerlevel10k
+            sudo dnf copr enable -y dperson/powerlevel10k
+        }
+
+        # Enable VSCode repository
+        print_log -g "[DNF] " -b "setup :: " "enabling VSCode repository..."
+        [ "${flg_DryRun}" -eq 1 ] || {
+            sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+            sudo sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+        }
         ;;
     *)
         print_log -r "[error] " "unsupported package manager"
