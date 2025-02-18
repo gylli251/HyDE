@@ -20,14 +20,48 @@ export cacheDir
 export aurList
 export shlList
 
+# Detect package manager
+detect_pkg_manager() {
+    if command -v dnf >/dev/null; then
+        echo "dnf"
+    elif command -v pacman >/dev/null; then
+        echo "pacman"
+    else
+        echo "unknown"
+    fi
+}
+
+pkg_manager=$(detect_pkg_manager)
+
+# Generic package management functions
 pkg_installed() {
     local PkgIn=$1
+    case "${pkg_manager}" in
+        "pacman")
+            pacman -Qi "${PkgIn}" &>/dev/null
+            ;;
+        "dnf")
+            dnf list installed "${PkgIn}" &>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
-    if pacman -Qi "${PkgIn}" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
+pkg_available() {
+    local PkgIn=$1
+    case "${pkg_manager}" in
+        "pacman")
+            pacman -Si "${PkgIn}" &>/dev/null
+            ;;
+        "dnf")
+            dnf info "${PkgIn}" &>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 chk_list() {
@@ -43,16 +77,6 @@ chk_list() {
     done
     # print_log -sec "install" -warn "no package found in the list..." "${inList[@]}"
     return 1
-}
-
-pkg_available() {
-    local PkgIn=$1
-
-    if pacman -Si "${PkgIn}" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
 }
 
 aur_available() {

@@ -17,7 +17,20 @@ export log_section="package"
 
 "${scrDir}/install_aur.sh" "${getAur}" 2>&1
 chk_list "aurhlpr" "${aurList[@]}"
-listPkg="${1:-"${scrDir}/pkg_core.lst"}"
+
+case "${pkg_manager}" in
+    "pacman")
+        listPkg="${1:-"${scrDir}/pkg_core_arch.lst"}"
+        ;;
+    "dnf")
+        listPkg="${1:-"${scrDir}/pkg_core_fedora.lst"}"
+        ;;
+    *)
+        print_log -crit "error" "Unsupported package manager"
+        exit 1
+        ;;
+esac
+
 archPkg=()
 aurhPkg=()
 ofs=$IFS
@@ -74,8 +87,15 @@ IFS=${ofs}
 
 if [ "${flg_DryRun}" -ne 1 ]; then
     if [[ ${#archPkg[@]} -gt 0 ]]; then
-        print_log -b "[install] " "arch packages..."
-        sudo pacman ${use_default:+"$use_default"} -S "${archPkg[@]}"
+        print_log -b "[install] " "packages..."
+        case "${pkg_manager}" in
+            "pacman")
+                sudo pacman ${use_default:+"$use_default"} -S "${archPkg[@]}"
+                ;;
+            "dnf")
+                sudo dnf ${use_default:+"$use_default"} install "${archPkg[@]}"
+                ;;
+        esac
     fi
 
     if [[ ${#aurhPkg[@]} -gt 0 ]]; then

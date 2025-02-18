@@ -45,3 +45,23 @@ else
     echo "${aurhlpr} installation failed..."
     exit 1
 fi
+
+case "${pkg_manager}" in
+    "pacman")
+        # Original AUR installation logic
+        # ...existing code...
+        ;;
+    "dnf")
+        print_log -warn "note" "Fedora uses COPR instead of AUR"
+        print_log -stat "setup" "Adding RPM Fusion repositories..."
+        if [ "${flg_DryRun}" -ne 1 ]; then
+            sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+            sudo dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+        fi
+        exit 0
+        ;;
+    *)
+        print_log -crit "error" "Unsupported package manager"
+        exit 1
+        ;;
+esac

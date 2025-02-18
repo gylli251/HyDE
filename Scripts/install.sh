@@ -314,3 +314,22 @@ if [ $flg_Install -eq 1 ] ||
         echo "The system will not reboot"
     fi
 fi
+
+if [ "${pkg_manager}" = "dnf" ]; then
+    print_log -stat "system" "Detected Fedora-based system"
+    if ! command -v copr >/dev/null; then
+        print_log -stat "install" "Installing dnf-plugins-core for COPR support"
+        [ ${flg_DryRun} -eq 1 ] || sudo dnf install -y dnf-plugins-core
+    fi
+fi
+
+# Before installing packages, ensure required repositories are enabled
+if [ "${pkg_manager}" = "dnf" ] && [ ${flg_Install} -eq 1 ]; then
+    print_log -stat "repos" "Setting up required repositories"
+    if [ ${flg_DryRun} -eq 1 ]; then
+        print_log -warn "skip" "Repository setup (dry run)"
+    else
+        # Enable COPR repository for Hyprland
+        sudo dnf copr enable -y solopasha/hyprland
+    fi
+fi
