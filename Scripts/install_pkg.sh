@@ -15,8 +15,11 @@ fi
 flg_DryRun=${flg_DryRun:-0}
 export log_section="package"
 
-"${scrDir}/install_aur.sh" "${getAur}" 2>&1
-chk_list "aurhlpr" "${aurList[@]}"
+# Only run AUR helper installation on Arch systems
+if [ "${pkg_manager}" = "pacman" ]; then
+    "${scrDir}/install_aur.sh" "${getAur}" 2>&1
+    chk_list "aurhlpr" "${aurList[@]}"
+fi
 
 case "${pkg_manager}" in
     "pacman")
