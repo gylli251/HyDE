@@ -31,20 +31,59 @@ detect_package_manager() {
     fi
 }
 
+clean_pkg_name() {
+    local pkg_name="$1"
+    # Remove any version specifiers
+    pkg_name="${pkg_name%%[<>=]*}"
+    # Remove any architecture specifiers
+    pkg_name="${pkg_name%.@*}"
+    # Remove any dependency specifiers (for packages with | in their name)
+    pkg_name="${pkg_name%%|*}"
+    echo "$pkg_name"
+}
+
 pkg_installed() {
     local PkgIn=$1
     local pkg_manager=$(detect_package_manager)
+    local pkg_name=$(clean_pkg_name "$PkgIn")
 
     case $pkg_manager in
         "pacman")
-            if pacman -Qi "${PkgIn}" &>/dev/null; then
+            if pacman -Qi "${pkg_name}" &>/dev/null; then
                 return 0
             else
                 return 1
             fi
             ;;
         "dnf")
-            if dnf list installed "${PkgIn}" &>/dev/null; then
+            if rpm -q "${pkg_name}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        *)
+            echo "Unsupported package manager"
+            return 1
+            ;;
+    esac
+}
+
+pkg_available() {
+    local PkgIn=$1
+    local pkg_manager=$(detect_package_manager)
+    local pkg_name=$(clean_pkg_name "$PkgIn")
+
+    case $pkg_manager in
+        "pacman")
+            if pacman -Si "${pkg_name}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        "dnf")
+            if dnf list available "${pkg_name}" &>/dev/null || dnf list installed "${pkg_name}" &>/dev/null; then
                 return 0
             else
                 return 1
@@ -70,32 +109,6 @@ chk_list() {
     done
     # print_log -sec "install" -warn "no package found in the list..." "${inList[@]}"
     return 1
-}
-
-pkg_available() {
-    local PkgIn=$1
-    local pkg_manager=$(detect_package_manager)
-
-    case $pkg_manager in
-        "pacman")
-            if pacman -Si "${PkgIn}" &>/dev/null; then
-                return 0
-            else
-                return 1
-            fi
-            ;;
-        "dnf")
-            if dnf list available "${PkgIn}" &>/dev/null; then
-                return 0
-            else
-                return 1
-            fi
-            ;;
-        *)
-            echo "Unsupported package manager"
-            return 1
-            ;;
-    esac
 }
 
 aur_available() {
@@ -149,6 +162,7 @@ prompt_timer() {
     echo ""
     set -e
 }
+
 print_log() {
     local executable="${0##*/}"
     local logFile="${cacheDir}/logs/${HYDE_LOG}/${executable}"
