@@ -171,10 +171,15 @@ EOL
             sudo dnf copr enable -y solopasha/hyprland
             # Starship prompt
             sudo dnf copr enable -y atim/starship
-            # nwg-look
-            sudo dnf copr enable -y trs80/nwg-look
-            # Powerlevel10k
-            sudo dnf copr enable -y dperson/powerlevel10k
+        }
+
+        # Install powerlevel10k manually
+        print_log -g "[DNF] " -b "setup :: " "installing powerlevel10k..."
+        [ "${flg_DryRun}" -eq 1 ] || {
+            if [ ! -d "$HOME/powerlevel10k" ]; then
+                git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/powerlevel10k"
+            fi
+            # Don't modify zshrc here as it will be handled by restore_cfg.sh
         }
 
         # Enable VSCode repository

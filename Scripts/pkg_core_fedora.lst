@@ -72,7 +72,8 @@ nwg-displays                                         # monitor management utilit
 
 # --------------------------------------------------- // Shell
 eza|zsh                                               # file lister for zsh
-zsh-theme-powerlevel10k|zsh                          # theme for zsh (from COPR)
+zsh                                                   # shell
+git                                                   # required for powerlevel10k
 pokego|zsh                                           # display pokemon sprites in terminal (from COPR)
 eza|fish                                             # file lister for fish
 starship|fish                                        # customizable shell prompt (from COPR)
