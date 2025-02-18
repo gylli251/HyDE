@@ -15,9 +15,20 @@ fi
 flg_DryRun=${flg_DryRun:-0}
 export log_section="package"
 
-"${scrDir}/install_aur.sh" "${getAur}" 2>&1
-chk_list "aurhlpr" "${aurList[@]}"
+pkg_manager=$(detect_package_manager)
 listPkg="${1:-"${scrDir}/pkg_core.lst"}"
+
+# Use Fedora package list if on Fedora
+if [ "$pkg_manager" = "dnf" ] && [ -f "${scrDir}/pkg_core_fedora.lst" ]; then
+    listPkg="${scrDir}/pkg_core_fedora.lst"
+fi
+
+# Only setup AUR helper on Arch
+if [ "$pkg_manager" = "pacman" ]; then
+    "${scrDir}/install_aur.sh" "${getAur}" 2>&1
+    chk_list "aurhlpr" "${aurList[@]}"
+fi
+
 archPkg=()
 aurhPkg=()
 ofs=$IFS
