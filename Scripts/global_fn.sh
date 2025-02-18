@@ -20,14 +20,41 @@ export cacheDir
 export aurList
 export shlList
 
+# Detect package manager
+detect_package_manager() {
+    if command -v pacman >/dev/null 2>&1; then
+        echo "pacman"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "dnf"
+    else
+        echo "unknown"
+    fi
+}
+
 pkg_installed() {
     local PkgIn=$1
+    local pkg_manager=$(detect_package_manager)
 
-    if pacman -Qi "${PkgIn}" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
+    case $pkg_manager in
+        "pacman")
+            if pacman -Qi "${PkgIn}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        "dnf")
+            if dnf list installed "${PkgIn}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        *)
+            echo "Unsupported package manager"
+            return 1
+            ;;
+    esac
 }
 
 chk_list() {
@@ -47,22 +74,43 @@ chk_list() {
 
 pkg_available() {
     local PkgIn=$1
+    local pkg_manager=$(detect_package_manager)
 
-    if pacman -Si "${PkgIn}" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
+    case $pkg_manager in
+        "pacman")
+            if pacman -Si "${PkgIn}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        "dnf")
+            if dnf list available "${PkgIn}" &>/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        *)
+            echo "Unsupported package manager"
+            return 1
+            ;;
+    esac
 }
 
 aur_available() {
     local PkgIn=$1
+    local pkg_manager=$(detect_package_manager)
 
-    # shellcheck disable=SC2154
-    if ${aurhlpr} -Si "${PkgIn}" &>/dev/null; then
-        return 0
+    if [ "$pkg_manager" = "pacman" ]; then
+        # shellcheck disable=SC2154
+        if ${aurhlpr} -Si "${PkgIn}" &>/dev/null; then
+            return 0
+        else
+            return 1
+        fi
     else
-        return 1
+        return 1 # AUR not available on non-Arch systems
     fi
 }
 

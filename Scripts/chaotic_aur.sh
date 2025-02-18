@@ -222,9 +222,13 @@ CHAOS
     fi
 }
 
-if ! command -v pacman >/dev/null 2>&1; then
-    box_me "Error: pacman not detected"
-    exit 1
+scrDir="$(dirname "$(realpath "$0")")"
+source "${scrDir}/global_fn.sh"
+
+pkg_manager=$(detect_package_manager)
+if [ "$pkg_manager" != "pacman" ]; then
+    box_me "Skipping Chaotic AUR setup - only available on Arch-based systems"
+    exit 0
 fi
 
 for option in "${rootOpts[@]}"; do

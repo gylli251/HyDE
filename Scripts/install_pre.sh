@@ -72,48 +72,84 @@ if pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | a
     fi
 fi
 
-# pacman
+# Package manager configuration
+pkg_manager=$(detect_package_manager)
+case $pkg_manager in
+    "pacman")
+        if [ -f /etc/pacman.conf ] && [ ! -f /etc/pacman.conf.hyde.bkp ]; then
+            print_log -g "[PACMAN] " -b "modify :: " "adding extra spice to pacman..."
 
-if [ -f /etc/pacman.conf ] && [ ! -f /etc/pacman.conf.hyde.bkp ]; then
-    print_log -g "[PACMAN] " -b "modify :: " "adding extra spice to pacman..."
+            # shellcheck disable=SC2154
+            [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/pacman.conf /etc/pacman.conf.hyde.bkp
+            [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^#Color/c\Color\nILoveCandy
+            /^#VerbosePkgLists/c\VerbosePkgLists
+            /^#ParallelDownloads/c\ParallelDownloads = 5" /etc/pacman.conf
+            [ "${flg_DryRun}" -eq 1 ] || sudo sed -i '/^#\[multilib\]/,+1 s/^#//' /etc/pacman.conf
 
-    # shellcheck disable=SC2154
-    [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/pacman.conf /etc/pacman.conf.hyde.bkp
-    [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^#Color/c\Color\nILoveCandy
-    /^#VerbosePkgLists/c\VerbosePkgLists
-    /^#ParallelDownloads/c\ParallelDownloads = 5" /etc/pacman.conf
-    [ "${flg_DryRun}" -eq 1 ] || sudo sed -i '/^#\[multilib\]/,+1 s/^#//' /etc/pacman.conf
+            print_log -g "[PACMAN] " -b "update :: " "packages..."
+            [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Syyu
+            [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Fy
+        else
+            print_log -sec "PACMAN" -stat "skipped" "pacman is already configured..."
+        fi
 
-    print_log -g "[PACMAN] " -b "update :: " "packages..."
-    [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Syyu
-    [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Fy
-else
-    print_log -sec "PACMAN" -stat "skipped" "pacman is already configured..."
-fi
+        if grep -q '\[chaotic-aur\]' /etc/pacman.conf; then
+            print_log -sec "CHAOTIC-AUR" -stat "skipped" "Chaotic AUR entry found in pacman.conf..."
+        else
+            prompt_timer 120 "Would you like to install Chaotic AUR? [y/n] | q to quit "
+            is_chaotic_aur=false
 
-if grep -q '\[chaotic-aur\]' /etc/pacman.conf; then
-    print_log -sec "CHAOTIC-AUR" -stat "skipped" "Chaotic AUR entry found in pacman.conf..."
-else
-    prompt_timer 120 "Would you like to install Chaotic AUR? [y/n] | q to quit "
-    is_chaotic_aur=false
-
-    case "${PROMPT_INPUT}" in
-    y | Y)
-        is_chaotic_aur=true
+            case "${PROMPT_INPUT}" in
+            y | Y)
+                is_chaotic_aur=true
+                ;;
+            n | N)
+                is_chaotic_aur=false
+                ;;
+            q | Q)
+                print_log -sec "Chaotic AUR" -crit "Quit" "Exiting..."
+                exit 1
+                ;;
+            *)
+                is_chaotic_aur=true
+                ;;
+            esac
+            if [ "${is_chaotic_aur}" == true ]; then
+                sudo pacman-key --init
+                sudo "${scrDir}/chaotic_aur.sh" --install
+            fi
+        fi
         ;;
-    n | N)
-        is_chaotic_aur=false
-        ;;
-    q | Q)
-        print_log -sec "Chaotic AUR" -crit "Quit" "Exiting..."
-        exit 1
+    "dnf")
+        print_log -g "[DNF] " -b "modify :: " "configuring dnf..."
+        
+        if [ ! -f /etc/dnf/dnf.conf.hyde.bkp ]; then
+            [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/dnf/dnf.conf /etc/dnf/dnf.conf.hyde.bkp
+            
+            # Add performance improvements to DNF config
+            [ "${flg_DryRun}" -eq 1 ] || sudo tee -a /etc/dnf/dnf.conf > /dev/null <<EOL
+max_parallel_downloads=10
+fastestmirror=true
+deltarpm=true
+EOL
+            
+            print_log -g "[DNF] " -b "update :: " "packages..."
+            [ "${flg_DryRun}" -eq 1 ] || sudo dnf update -y
+            [ "${flg_DryRun}" -eq 1 ] || sudo dnf check-update
+        else
+            print_log -sec "DNF" -stat "skipped" "dnf is already configured..."
+        fi
+
+        # Enable RPM Fusion repositories
+        if ! dnf repolist | grep -q "rpmfusion-free" || ! dnf repolist | grep -q "rpmfusion-nonfree"; then
+            print_log -g "[DNF] " -b "setup :: " "enabling RPM Fusion repositories..."
+            [ "${flg_DryRun}" -eq 1 ] || sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+        else
+            print_log -sec "RPM Fusion" -stat "skipped" "repositories already enabled..."
+        fi
         ;;
     *)
-        is_chaotic_aur=true
+        print_log -r "[error] " "unsupported package manager"
+        exit 1
         ;;
-    esac
-    if [ "${is_chaotic_aur}" == true ]; then
-        sudo pacman-key --init
-        sudo "${scrDir}/chaotic_aur.sh" --install
-    fi
-fi
+esac

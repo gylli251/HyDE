@@ -73,13 +73,28 @@ done < <(cut -d '#' -f 1 "${listPkg}")
 IFS=${ofs}
 
 if [ "${flg_DryRun}" -ne 1 ]; then
-    if [[ ${#archPkg[@]} -gt 0 ]]; then
-        print_log -b "[install] " "arch packages..."
-        sudo pacman ${use_default:+"$use_default"} -S "${archPkg[@]}"
-    fi
+    pkg_manager=$(detect_package_manager)
+    case $pkg_manager in
+        "pacman")
+            if [[ ${#archPkg[@]} -gt 0 ]]; then
+                print_log -b "[install] " "arch packages..."
+                sudo pacman ${use_default:+"$use_default"} -S "${archPkg[@]}"
+            fi
 
-    if [[ ${#aurhPkg[@]} -gt 0 ]]; then
-        print_log -b "[install] " "aur packages..."
-        "${aurhlpr}" ${use_default:+"$use_default"} -S "${aurhPkg[@]}"
-    fi
+            if [[ ${#aurhPkg[@]} -gt 0 ]]; then
+                print_log -b "[install] " "aur packages..."
+                "${aurhlpr}" ${use_default:+"$use_default"} -S "${aurhPkg[@]}"
+            fi
+            ;;
+        "dnf")
+            if [[ ${#archPkg[@]} -gt 0 ]]; then
+                print_log -b "[install] " "fedora packages..."
+                sudo dnf install -y "${archPkg[@]}"
+            fi
+            ;;
+        *)
+            print_log -r "[error] " "unsupported package manager"
+            exit 1
+            ;;
+    esac
 fi
