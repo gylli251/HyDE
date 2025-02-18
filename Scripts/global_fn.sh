@@ -11,7 +11,7 @@ cloneDir="$(dirname "${scrDir}")" # fallback, we will use CLONE_DIR now
 cloneDir="${CLONE_DIR:-${cloneDir}}"
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hyde"
-aurList=("yay" "paru")
+aurList=("yay" "paru" "yay-bin" "paru-bin") # Restore full AUR helper list
 shlList=("zsh" "fish")
 
 export cloneDir
@@ -79,15 +79,16 @@ chk_list() {
     return 1
 }
 
+# Modify aur_available function to handle non-Arch systems
 aur_available() {
-    local PkgIn=$1
-
-    # shellcheck disable=SC2154
-    if ${aurhlpr} -Si "${PkgIn}" &>/dev/null; then
-        return 0
-    else
+    if [ "${pkg_manager}" != "pacman" ]; then
         return 1
     fi
+    local PkgIn=$1
+    if ${aurhlpr} -Si "${PkgIn}" &>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 nvidia_detect() {

@@ -11,6 +11,11 @@ if ! source "${scrDir}/global_fn.sh"; then
     exit 1
 fi
 
+# Exit early if not on Arch Linux
+if [ "${pkg_manager}" != "pacman" ]; then
+    exit 0
+fi
+
 # shellcheck disable=SC2154
 if chk_list "aurhlpr" "${aurList[@]}"; then
     print_log -sec "AUR" -stat "detected" "${aurhlpr}"
